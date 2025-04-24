@@ -1,69 +1,59 @@
 package com.perpustakaan.perpusapi.service;
 
-import com.perpustakaan.perpusapi.config.DatabaseConfig;
+import com.perpustakaan.perpusapi.model.Account;
+import com.perpustakaan.perpusapi.model.Member;
 import com.perpustakaan.perpusapi.repo.AccountRepo;
+import com.perpustakaan.perpusapi.repo.MemberRepo;
 
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.util.List;
+import java.util.Optional;
 
 public class AccountService {
-    public enum Role{
-        ADMIN, MEMBER, NONE
+    private final AccountRepo accountRepo;
+    private final MemberRepo memberRepository;
+
+    public AccountService(AccountRepo accountRepo, MemberRepo memberRepository) {
+        this.accountRepo = accountRepo;
+        this.memberRepository = memberRepository;
     }
 
-    public static Role login(String email, String password) {
-        String sql = "SELECT user_id FROM account WHERE email = ? AND password = ?";
-        try (Connection conn = DatabaseConfig.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+    public AccountService(MemberRepo memberRepo) {
+        this(null, memberRepo);
+    }
 
-            stmt.setString(1, email);
-            stmt.setString(2, password);
+    public AccountService(AccountRepo accountRepo) {
+        this(accountRepo, null);
+    }
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    int userId = rs.getInt("user_id");
-
-                    // Cek apakah akun ini admin
-                    if (isAdmin(userId, conn)) return Role.ADMIN;
-
-                    // Cek apakah akun ini member
-                    if (isMember(userId, conn)) return Role.MEMBER;
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+    public Member getProfileByEmail(String email){
+        Optional<Account> accountOpt = this.accountRepo.findByEmail(email);
+        if (accountOpt.isEmpty()) {
+            throw new IllegalArgumentException("Email tidak ditemukan");
         }
 
-        return Role.NONE;
-    }
-
-    private static boolean isAdmin(int userId, Connection conn){
-        try (PreparedStatement stmt = conn.prepareStatement("SELECT admin_id FROM admin WHERE account_id_fk = ?")) {
-            stmt.setInt(1, userId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
+        Account account = accountOpt.get();
+        Optional<Member> memberOpt = this.memberRepository.findByUserId(account.getUserId());
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+            member.setEmail(email);
+            return (member);
         }
+        return null;
     }
 
-    private static boolean isMember(int userId, Connection conn){
-        try(PreparedStatement stmt = conn.prepareStatement("SELECT user_id FROM member WHERE account_id_fk = ?")){
-            stmt.setInt(1, userId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                return rs.next();
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-            return false;
+    public Member getProfileByUserId(int id){
+        Optional<Member> memberOpt = memberRepository.findByUserId(id);
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+            Optional<Account> acc = accountRepo.findById(id);
+            member.setEmail(acc.get().getEmail());
+            return member;
         }
+        return null;
     }
 
-    public static int getAccountId(String email) {
-        return AccountRepo.getAccountId(email);
+    public List<Account> getAllAccount(){
+        return this.accountRepo.getAll();
     }
 }
+
