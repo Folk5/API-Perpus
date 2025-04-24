@@ -1,52 +1,44 @@
 package com.perpustakaan.perpusapi.resource;
 
-import com.perpustakaan.perpusapi.service.AuthService;
-import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import com.perpustakaan.perpusapi.service.AccountService;
 
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 
 @Path("/auth")
-@Produces(MediaType.APPLICATION_JSON)
-@Consumes(MediaType.APPLICATION_JSON)
 public class AuthResource {
-    @Inject
-    private AuthService authService;
 
-    // ✅ Login
     @POST
     @Path("/login")
-    public Response login(LoginRequest request) {
-        Optional<String> token = authService.login(request.email, request.password);
-        if (token.isPresent()) {
-            return Response.ok(new TokenResponse(token.get())).build();
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response login(Map<String, String> request) {
+        System.out.println(">>> Login endpoint HIT"); // debug
+        String email = request.get("email");
+        String password = request.get("password");
+
+        if (email == null || password == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("message", "Email dan password wajib diisi"))
+                    .build();
         }
-        return Response.status(Response.Status.UNAUTHORIZED).entity("Login gagal").build();
-    }
 
-    // ✅ Register
-    @POST
-    @Path("/register")
-    public Response register(LoginRequest request) {
-        Optional<String> token = authService.register(request.email, request.password);
-        if (token.isPresent()) {
-            return Response.ok(new TokenResponse(token.get())).build();
-        }
-        return Response.status(Response.Status.BAD_REQUEST).entity("Registrasi gagal").build();
-    }
+        AccountService.Role role = AccountService.login(email, password);
 
-    public static class LoginRequest {
-        public String email;
-        public String password;
-    }
-
-    public static class TokenResponse {
-        public String token;
-
-        public TokenResponse(String token) {
-            this.token = token;
+        if (role != AccountService.Role.NONE) {
+            int userId = AccountService.getAccountId(email);
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Login berhasil");
+            response.put("user_id", userId);
+            response.put("role", role.toString().toLowerCase());
+            return Response.ok(response).build();
+        } else {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(Map.of("message", "Email atau password salah"))
+                    .build();
         }
     }
 }

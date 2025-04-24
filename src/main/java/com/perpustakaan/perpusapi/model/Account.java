@@ -1,29 +1,24 @@
 package com.perpustakaan.perpusapi.model;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
-public class Account{
-    private int user_id;
+public class Account {
+    private int userId;
     private String email;
     private String password;
 
-    public Account() {
-    }
+    public Account() {}
 
-    public Account(int user_id, String email, String password){
-        this.user_id = user_id;
+    public Account(int userId, String email, String password) {
+        this.userId = userId;
         this.email = email;
         this.password = password;
     }
 
-
-    public int getUser_id() {
-        return user_id;
+    public int getUserId() {
+        return userId;
     }
 
-    public void setUser_id(int user_id) {
-        this.user_id = user_id;
+    public void setUserId(int userId) {
+        this.userId = userId;
     }
 
     public String getEmail() {
@@ -42,3 +37,4 @@ public class Account{
         this.password = password;
     }
 }
+

@@ -74,6 +74,15 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <!--    JWT For Auth    -->
+        <!-- https://mvnrepository.com/artifact/com.nimbusds/nimbus-jose-jwt -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>10.0.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>

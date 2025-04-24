@@ -16,7 +16,7 @@ public class HashUtil {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Error hashing password", e);
+            throw new RuntimeException("Algoritma hash tidak ditemukan", e);
         }
     }
 }
