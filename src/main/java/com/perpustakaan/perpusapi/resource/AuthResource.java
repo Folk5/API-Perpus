@@ -3,13 +3,11 @@ package com.perpustakaan.perpusapi.resource;
 import com.perpustakaan.perpusapi.model.Account;
 import com.perpustakaan.perpusapi.repo.AccountRepo;
 import com.perpustakaan.perpusapi.service.AuthService;
-import com.perpustakaan.perpusapi.utils.HashUtil;
 import com.perpustakaan.perpusapi.utils.TokenUtil;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;

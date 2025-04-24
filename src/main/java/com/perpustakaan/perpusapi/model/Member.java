@@ -3,8 +3,6 @@ package com.perpustakaan.perpusapi.model;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class Member extends Account{
     private int member_id;
