@@ -1,7 +1,9 @@
 package com.perpustakaan.perpusapi.resource;
 
 import com.perpustakaan.perpusapi.model.Account;
+import com.perpustakaan.perpusapi.model.Member;
 import com.perpustakaan.perpusapi.repo.AccountRepo;
+import com.perpustakaan.perpusapi.repo.MemberRepo;
 import com.perpustakaan.perpusapi.service.AuthService;
 import com.perpustakaan.perpusapi.utils.TokenUtil;
 import jakarta.ws.rs.*;
@@ -24,22 +26,40 @@ public class AuthResource {
     public Response login(Map<String, String> credentials){
         String email = credentials.get("email");
         String password = credentials.get("password");
-        AccountRepo accountRepo = new AccountRepo();
+
         try {
             AuthService auth = new AuthService(accountRepo);
             if (auth.login(email, password)) {
                 String token = TokenUtil.generateToken(email);
 
+                // Ambil account dari email
+                Account account = accountRepo.findByEmail(email).orElse(null);
+                if (account == null) {
+                    return Response.status(Response.Status.UNAUTHORIZED)
+                            .entity(Collections.singletonMap("message", "Akun tidak ditemukan"))
+                            .build();
+                }
+
+                // Ambil member dari account_id
+                MemberRepo memberRepo = new MemberRepo();
+                Member member = memberRepo.findByUserId(account.getUserId()).orElse(null);
+
+                String fullName = "";
+                if (member != null) {
+                    fullName = member.getNama_depan() + " " + member.getNama_belakang();
+                }
+
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "Login berhasil!");
                 response.put("token", token);
+                response.put("email", account.getEmail());
+                response.put("name", fullName);
 
                 return Response.ok(response).build();
             } else {
                 return Response.status(Response.Status.UNAUTHORIZED)
                         .entity(Collections.singletonMap("message", "Email atau password salah"))
                         .build();
-
             }
         } catch (Exception e) {
             e.printStackTrace();
