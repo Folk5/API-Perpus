@@ -10,6 +10,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,6 +19,7 @@ import java.util.Map;
 public class AuthResource {
 
     private final AccountRepo accountRepo = new AccountRepo();
+    private final MemberRepo memberRepo = new MemberRepo();
 
     @POST
     @Path("login")
@@ -28,7 +30,7 @@ public class AuthResource {
         String password = credentials.get("password");
 
         try {
-            AuthService auth = new AuthService(accountRepo);
+            AuthService auth = new AuthService(accountRepo, memberRepo);
             if (auth.login(email, password)) {
                 String token = TokenUtil.generateToken(email);
 
@@ -41,7 +43,6 @@ public class AuthResource {
                 }
 
                 // Ambil member dari account_id
-                MemberRepo memberRepo = new MemberRepo();
                 Member member = memberRepo.findByUserId(account.getUserId()).orElse(null);
 
                 String fullName = "";
@@ -73,16 +74,23 @@ public class AuthResource {
     @Path("register")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public Response register(Map<String, String> credentials){
-        String email = credentials.get("email");
-        String password = credentials.get("password");
+    public Response register(Map<String, String> body){
         try {
-            AuthService auth = new AuthService(accountRepo);
-            Account account = auth.register(email, password).orElse(null);
+            String email = body.get("email");
+            String password = body.get("password");
+            String namaDepan = body.get("nama_depan");
+            String namaBelakang = body.get("nama_belakang");
+            String tanggalLahirStr = body.get("tanggal_lahir");
+
+            LocalDate tanggalLahir = LocalDate.parse(tanggalLahirStr); // Format yyyy-MM-dd
+
+            AuthService auth = new AuthService(accountRepo, memberRepo);
+            Account account = auth.register(email, password, namaDepan, namaBelakang, tanggalLahir).orElse(null);
+
             if (account != null) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "Registrasi berhasil!");
-                response.put("account", account);
+                response.put("email", account.getEmail());
 
                 return Response.ok(response).build();
             } else {

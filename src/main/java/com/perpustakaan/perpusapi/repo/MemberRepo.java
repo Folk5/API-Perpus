@@ -35,4 +35,21 @@ public class MemberRepo {
         }
         return Optional.empty();
     }
+
+    public boolean insert(Member member) {
+        String sql = "INSERT INTO member (nama_depan, nama_belakang, tanggal_lahir, account_id_fk) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, member.getNama_depan());
+            stmt.setString(2, member.getNama_belakang());
+            stmt.setDate(3, java.sql.Date.valueOf(member.getTanggal_lahir()));
+            stmt.setInt(4, member.getAccount_id_fk());
+
+            return stmt.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

@@ -2,6 +2,7 @@ package com.perpustakaan.perpusapi.repo;
 
 import com.perpustakaan.perpusapi.config.DatabaseConfig;
 import com.perpustakaan.perpusapi.model.Account;
+import com.perpustakaan.perpusapi.model.Member;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -121,4 +122,23 @@ public class AccountRepo {
         }
         return null;
     }
+
+    public boolean insertMember(Member member) {
+        String sql = "INSERT INTO member (nama_depan, nama_belakang, tanggal_lahir, id) VALUES (?, ?, ?, ?)";
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, member.getNama_depan());
+            stmt.setString(2, member.getNama_belakang());
+            stmt.setObject(3, member.getTanggal_lahir()); // untuk LocalDate
+            stmt.setInt(4, member.getAccount_id_fk());
+
+            return stmt.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }

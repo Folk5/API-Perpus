@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDate;
 
-public class Member extends Account{
+public class Member extends Account {
     private int member_id;
     private String nama_depan;
     private String nama_belakang;
@@ -12,6 +12,7 @@ public class Member extends Account{
     private LocalDate tanggal_lahir;
     private int account_id_fk;
 
+    // Constructor dengan parameter
     public Member(int member_id, String nama_depan, String nama_belakang, LocalDate tanggal_lahir, int account_id_fk) {
         this.member_id = member_id;
         this.nama_depan = nama_depan;
@@ -20,7 +21,12 @@ public class Member extends Account{
         this.account_id_fk = account_id_fk;
     }
 
+    // Constructor kosong (default)
+    public Member() {
+        // Inisialisasi default jika diperlukan
+    }
 
+    // Getter dan Setter
     public int getMember_id() {
         return member_id;
     }
