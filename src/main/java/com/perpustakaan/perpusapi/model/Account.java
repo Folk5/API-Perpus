@@ -1,8 +1,17 @@
 package com.perpustakaan.perpusapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class Account {
+
+    @JsonProperty("userId")
     private int userId;
+
+    @JsonProperty("email")
     private String email;
+
+    @JsonIgnore // agar tidak muncul di JSON response
     private String password;
 
     public Account() {}
@@ -37,4 +46,3 @@ public class Account {
         this.password = password;
     }
 }
-
