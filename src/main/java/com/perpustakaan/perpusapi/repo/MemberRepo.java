@@ -55,22 +55,44 @@ public class MemberRepo {
     }
 
 
-    public boolean update (Member member){
-        String sql = "UPDATE member SET nama_depan = ?, nama_belakang = ?, tanggal_lahir = ? WHERE account_id_fk = ?";
-        try (Connection conn = DatabaseConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)){
+    public boolean update(Member member) {
+        String sqlMember = "UPDATE member SET nama_depan = ?, nama_belakang = ?, tanggal_lahir = ? WHERE account_id_fk = ?";
+        String sqlAccount = "UPDATE account SET email = ? WHERE user_Id = ?";
 
-            stmt.setString(1, member.getNama_depan());
-            stmt.setString(2, member.getNama_belakang());
-            stmt.setDate(3, java.sql.Date.valueOf(member.getTanggal_lahir()));
-            stmt.setInt(4, member.getAccount_id_fk());
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false); // Mulai transaksi
 
-            return stmt.executeUpdate() > 0;
-        }catch (Exception e){
+            try (
+                    PreparedStatement stmtMember = conn.prepareStatement(sqlMember);
+                    PreparedStatement stmtAccount = conn.prepareStatement(sqlAccount)
+            ) {
+                // Update member
+                stmtMember.setString(1, member.getNama_depan());
+                stmtMember.setString(2, member.getNama_belakang());
+                stmtMember.setDate(3, java.sql.Date.valueOf(member.getTanggal_lahir()));
+                stmtMember.setInt(4, member.getAccount_id_fk());
+                stmtMember.executeUpdate();
+
+                // Update email di account
+                stmtAccount.setString(1, member.getEmail());
+                stmtAccount.setInt(2, member.getAccount_id_fk());
+                stmtAccount.executeUpdate();
+
+                conn.commit();
+                return true;
+            } catch (Exception e) {
+                conn.rollback(); // Jika ada error, rollback perubahan
+                e.printStackTrace();
+            } finally {
+                conn.setAutoCommit(true); // Kembalikan ke mode default
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
         return false;
     }
+
 
 
 }
