@@ -55,6 +55,7 @@ public class AuthResource {
                 response.put("token", token);
                 response.put("email", account.getEmail());
                 response.put("name", fullName);
+                response.put("firstName", member.getNama_depan());
 
                 return Response.ok(response).build();
             } else {
