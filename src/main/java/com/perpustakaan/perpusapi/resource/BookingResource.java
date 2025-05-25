@@ -37,24 +37,23 @@ public class BookingResource {
         }
     }
 
-    // Endpoint untuk mendapatkan daftar buku yang sedang dipinjam oleh user berdasarkan accountId
     @GET
     @Path("/bookings/{accountId}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getBookingsByAccountId(@PathParam("accountId") int accountId) {
-        // List untuk menampung data buku yang dipinjam
         List<Book> books = new ArrayList<>();
 
-        // Query yang akan digunakan untuk mengambil data booking berdasarkan accountId
+        // Perubahan pada query untuk mengambil booking_date dan expired_date dari tabel booking
         String sql = """
     SELECT b.buku_id, b.nama_buku, b.tipe_buku, b.jenis_buku, b.tgl_terbit, b.author,
            b.rakbuku_id_fk, b.status_booking, b.jumlah,
+           bk.booking_date, bk.expired_date, 
            (
                SELECT COUNT(*) FROM bukudetails bd2
                WHERE bd2.buku_id_fk = b.buku_id AND bd2.status = 1
            ) AS jml_tersedia
     FROM booking bk
-    JOIN bukudetails bd ON bk.bukuDetails_id_fk = bd.id  -- Perbaikan di sini
+    JOIN bukudetails bd ON bk.bukuDetails_id_fk = bd.id
     JOIN buku b ON bd.buku_id_fk = b.buku_id
     JOIN member m ON bk.member_id_fk = m.member_id
     WHERE m.account_id_fk = ? AND bd.status = 0
@@ -62,12 +61,11 @@ public class BookingResource {
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            // Set parameter accountId
-            stmt.setInt(1, accountId);
+            stmt.setInt(1, accountId); // Set accountId
             ResultSet rs = stmt.executeQuery();
 
-            // Ambil hasil query dan simpan ke dalam list
             while (rs.next()) {
+                // Menambahkan booking_date dan expired_date dari hasil query ke objek Book
                 Book book = new Book(
                         rs.getInt("buku_id"),
                         rs.getString("nama_buku"),
@@ -78,12 +76,13 @@ public class BookingResource {
                         rs.getInt("rakbuku_id_fk"),
                         rs.getBoolean("status_booking"),
                         rs.getInt("jumlah"),
-                        rs.getInt("jml_tersedia")
+                        rs.getInt("jml_tersedia"),
+                        rs.getDate("booking_date"),  // Menambahkan booking_date
+                        rs.getDate("expired_date")   // Menambahkan expired_date
                 );
                 books.add(book);
             }
 
-            // Jika data ditemukan, kembalikan response dengan data
             if (!books.isEmpty()) {
                 return Response.ok(books).build();
             } else {
@@ -93,11 +92,9 @@ public class BookingResource {
             }
         } catch (SQLException e) {
             e.printStackTrace();
-            // Jika terjadi kesalahan dalam query atau koneksi, kembalikan error response
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Collections.singletonMap("message", "Gagal mengambil data booking: " + e.getMessage()))
                     .build();
         }
     }
-
 }

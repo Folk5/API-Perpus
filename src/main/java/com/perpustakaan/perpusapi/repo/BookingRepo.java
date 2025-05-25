@@ -116,7 +116,9 @@ public class BookingRepo {
                         rs.getInt("rakbuku_id_fk"),
                         rs.getBoolean("status_booking"),
                         rs.getInt("jumlah"),
-                        rs.getInt("jml_tersedia")
+                        rs.getInt("jml_tersedia"),
+                        rs.getDate("booking_date"),  // Menambahkan booking_date
+                        rs.getDate("expired_date")
                 );
                 books.add(book);
             }

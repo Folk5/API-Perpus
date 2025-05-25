@@ -1,6 +1,7 @@
 package com.perpustakaan.perpusapi.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Date;
 
 public class Book {
 
@@ -34,14 +35,20 @@ public class Book {
     @JsonProperty("jml_tersedia")
     private int jmlTersedia;
 
-    // Constructor kosong (wajib untuk JAX-RS/JSON parsing)
+    @JsonProperty("booking_date")
+    private Date bookingDate;
+
+    @JsonProperty("expired_date")
+    private Date expiredDate;
+
     public Book() {
     }
 
     // Constructor lengkap
     public Book(int bukuId, String namaBuku, String tipeBuku, String jenisBuku,
                 String tglTerbit, String author, int rakbukuIdFk,
-                boolean statusBooking, int jumlah, int jmlTersedia) {
+                boolean statusBooking, int jumlah, int jmlTersedia,
+                Date bookingDate, Date expiredDate) {
         this.bukuId = bukuId;
         this.namaBuku = namaBuku;
         this.tipeBuku = tipeBuku;
@@ -52,9 +59,28 @@ public class Book {
         this.statusBooking = statusBooking;
         this.jumlah = jumlah;
         this.jmlTersedia = jmlTersedia;
+        this.bookingDate = bookingDate;
+        this.expiredDate = expiredDate;
     }
 
-    // Getter dan Setter
+    // Getter dan Setter untuk bookingDate dan expiredDate
+    public Date getBookingDate() {
+        return bookingDate;
+    }
+
+    public void setBookingDate(Date bookingDate) {
+        this.bookingDate = bookingDate;
+    }
+
+    public Date getExpiredDate() {
+        return expiredDate;
+    }
+
+    public void setExpiredDate(Date expiredDate) {
+        this.expiredDate = expiredDate;
+    }
+
+    // Getter dan Setter untuk atribut lainnya
     public int getBukuId() {
         return bukuId;
     }
