@@ -61,4 +61,14 @@ public class AuthService {
 
         return Optional.empty();
     }
+
+    public String getRoleByAccountId(int accountId) {
+        boolean isAdmin = accountRepo.isAdmin(accountId);
+        boolean isMember = memberRepo.findByUserId(accountId).isPresent();
+
+        if (isAdmin) return "admin";
+        else if (isMember) return "member";
+        else return "unknown";
+    }
+
 }

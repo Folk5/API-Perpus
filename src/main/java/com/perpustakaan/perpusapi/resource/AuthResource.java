@@ -42,21 +42,24 @@ public class AuthResource {
                             .build();
                 }
 
-                // Ambil member dari account_id
-                Member member = memberRepo.findByUserId(account.getUserId()).orElse(null);
-
-                String fullName = "";
-                if (member != null) {
-                    fullName = member.getNama_depan() + " " + member.getNama_belakang();
-                }
+                String role = auth.getRoleByAccountId(account.getUserId());
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "Login berhasil!");
                 response.put("token", token);
                 response.put("email", account.getEmail());
-                response.put("name", fullName);
-                response.put("firstName", member.getNama_depan());
                 response.put("accountId", account.getUserId());
+                response.put("role", role);
+
+                // Jika member, tambahkan info nama
+                if (role.equals("member")) {
+                    Member member = memberRepo.findByUserId(account.getUserId()).orElse(null);
+                    if (member != null) {
+                        String fullName = member.getNama_depan() + " " + member.getNama_belakang();
+                        response.put("name", fullName);
+                        response.put("firstName", member.getNama_depan());
+                    }
+                }
 
                 return Response.ok(response).build();
             } else {

@@ -141,4 +141,20 @@ public class AccountRepo {
         }
     }
 
+    public boolean isAdmin(int accountId) {
+        String sql = "SELECT COUNT(*) FROM admin WHERE account_id_fk = ?";
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, accountId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
 }
