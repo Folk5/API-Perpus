@@ -13,9 +13,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Path("/booking")
 public class BookingResource {
@@ -97,4 +95,117 @@ public class BookingResource {
                     .build();
         }
     }
+
+    @GET
+    @Path("/all-booking")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getAllUserBookings() {
+        String sql = """
+    SELECT m.member_id, m.nama_depan, m.nama_belakang,
+           b.nama_buku, bk.booking_date, bk.expired_date, bk.booking_id
+    FROM booking bk
+    JOIN member m ON bk.member_id_fk = m.member_id
+    JOIN bukudetails bd ON bk.bukuDetails_id_fk = bd.id
+    JOIN buku b ON bd.buku_id_fk = b.buku_id
+    WHERE bd.status = 0
+    ORDER BY m.member_id, bk.booking_date DESC
+    """;
+
+        try (Connection conn = DatabaseConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = stmt.executeQuery();
+            Map<Integer, Map<String, Object>> grouped = new LinkedHashMap<>();
+
+            while (rs.next()) {
+                int memberId = rs.getInt("member_id");
+                String fullName = rs.getString("nama_depan") + " " + rs.getString("nama_belakang");
+
+                Map<String, Object> userGroup = grouped.computeIfAbsent(memberId, k -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("memberId", memberId);
+                    m.put("nama", fullName);
+                    m.put("pinjaman", new ArrayList<Map<String, Object>>());
+                    return m;
+                });
+
+                List<Map<String, Object>> pinjaman = (List<Map<String, Object>>) userGroup.get("pinjaman");
+
+                Map<String, Object> detail = new HashMap<>();
+                detail.put("judul", rs.getString("nama_buku"));
+                detail.put("bookingDate", rs.getDate("booking_date"));
+                detail.put("expiredDate", rs.getDate("expired_date"));
+                detail.put("bookingId", rs.getInt("booking_id"));
+
+                pinjaman.add(detail);
+            }
+
+            return Response.ok(new ArrayList<>(grouped.values())).build();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("message", "Gagal mengambil data booking: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/return-book/{bookingId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response kembalikanBuku(@PathParam("bookingId") int bookingId) {
+        try (Connection conn = DatabaseConfig.getConnection()) {
+            conn.setAutoCommit(false);
+
+            // 1. Cari buku detail dari booking_id
+            String getDetailSql = "SELECT bukuDetails_id_fk FROM booking WHERE booking_id = ?";
+            int detailId = -1;
+
+            try (PreparedStatement stmt = conn.prepareStatement(getDetailSql)) {
+                stmt.setInt(1, bookingId);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    detailId = rs.getInt("bukuDetails_id_fk");
+                } else {
+                    throw new SQLException("Booking ID tidak ditemukan");
+                }
+            }
+
+            // 2. Update bukudetails status jadi 1
+            try (PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE bukudetails SET status = 1 WHERE id = ?")) {
+                stmt.setInt(1, detailId);
+                stmt.executeUpdate();
+            }
+
+            // 3. Ambil buku_id_fk dan update jml_tersedia
+            int bukuId = -1;
+            try (PreparedStatement stmt = conn.prepareStatement(
+                    "SELECT buku_id_fk FROM bukudetails WHERE id = ?")) {
+                stmt.setInt(1, detailId);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    bukuId = rs.getInt("buku_id_fk");
+                }
+            }
+
+            if (bukuId > 0) {
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "UPDATE buku SET jml_tersedia = jml_tersedia + 1, status_booking = 0 WHERE buku_id = ?")) {
+                    stmt.setInt(1, bukuId);
+                    stmt.executeUpdate();
+                }
+            }
+
+            conn.commit();
+            return Response.ok(Map.of("message", "Buku berhasil dikembalikan")).build();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("message", "Gagal mengembalikan buku: " + e.getMessage()))
+                    .build();
+        }
+    }
+
 }
