@@ -26,6 +26,9 @@ public class Book {
     @JsonProperty("rakbuku_id_fk")
     private int rakbukuIdFk;
 
+    @JsonProperty("jenis_rak")
+    private String jenisRak;
+
     @JsonProperty("status_booking")
     private boolean statusBooking;
 
@@ -46,7 +49,7 @@ public class Book {
 
     // Constructor lengkap
     public Book(int bukuId, String namaBuku, String tipeBuku, String jenisBuku,
-                String tglTerbit, String author, int rakbukuIdFk,
+                String tglTerbit, String author, int rakbukuIdFk, String jenisRak,
                 boolean statusBooking, int jumlah, int jmlTersedia,
                 Date bookingDate, Date expiredDate) {
         this.bukuId = bukuId;
@@ -56,6 +59,7 @@ public class Book {
         this.tglTerbit = tglTerbit;
         this.author = author;
         this.rakbukuIdFk = rakbukuIdFk;
+        this.jenisRak = jenisRak;
         this.statusBooking = statusBooking;
         this.jumlah = jumlah;
         this.jmlTersedia = jmlTersedia;
@@ -135,6 +139,14 @@ public class Book {
 
     public void setRakbukuIdFk(int rakbukuIdFk) {
         this.rakbukuIdFk = rakbukuIdFk;
+    }
+
+    public String getJenisRak() {
+        return jenisRak;
+    }
+
+    public void setJenisRak(String jenisRak) {
+        this.jenisRak = jenisRak;
     }
 
     public boolean isStatusBooking() {

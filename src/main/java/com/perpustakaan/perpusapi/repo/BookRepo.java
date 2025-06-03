@@ -12,15 +12,16 @@ public class BookRepo {
     private final String USERNAME = "root";
     private final String PASSWORD = "";
 
+    // Metode connect() tetap sama
     private Connection connect() throws SQLException {
         return DriverManager.getConnection(URL, USERNAME, PASSWORD);
     }
 
     public List<Book> getAll() {
         List<Book> books = new ArrayList<>();
-        String sql = "SELECT * FROM buku"; // Sesuai nama tabel lu
+        String sql = "SELECT * FROM buku";
 
-        try (Connection conn = connect();
+        try (Connection conn = connect(); // Koneksi lokal untuk operasi read-only ini
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
@@ -35,7 +36,7 @@ public class BookRepo {
 
     public Book findById(int id) {
         String sql = "SELECT * FROM buku WHERE buku_id = ?";
-        try (Connection conn = connect();
+        try (Connection conn = connect(); // Koneksi lokal
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, id);
@@ -50,26 +51,44 @@ public class BookRepo {
         return null;
     }
 
-    public void insert(Book book) {
+    public int insert(Book book, Connection conn) throws SQLException {
         String sql = "INSERT INTO buku (nama_buku, tipe_buku, jenis_buku, tgl_terbit, author, rakbuku_id_fk, status_booking, jumlah, jml_tersedia) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-        try (Connection conn = connect();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, book.getNamaBuku());
             stmt.setString(2, book.getTipeBuku());
             stmt.setString(3, book.getJenisBuku());
-            stmt.setString(4, book.getTglTerbit());
+            stmt.setString(4, book.getTglTerbit()); // Pastikan format tanggal sesuai dengan kolom DB
             stmt.setString(5, book.getAuthor());
             stmt.setInt(6, book.getRakbukuIdFk());
             stmt.setBoolean(7, book.isStatusBooking());
             stmt.setInt(8, book.getJumlah());
             stmt.setInt(9, book.getJmlTersedia());
 
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        return generatedKeys.getInt(1);
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    public void insertBukuDetails(int bukuIdFk, int jumlahBuku, Connection conn) throws SQLException {
+        String sql = "INSERT INTO bukudetails (status, keluhan, buku_id_fk) VALUES (?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (int i = 0; i < jumlahBuku; i++) {
+                stmt.setInt(1, 1); // status default 1 (tersedia)
+                stmt.setString(2, "Tidak ada"); // keluhan default
+                stmt.setInt(3, bukuIdFk);
+                stmt.addBatch(); // Tambahkan ke batch
+            }
+            stmt.executeBatch(); // Eksekusi batch insert
         }
     }
 

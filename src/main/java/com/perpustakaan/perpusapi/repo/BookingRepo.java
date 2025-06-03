@@ -89,21 +89,25 @@ public class BookingRepo {
     public List<Book> getBookingByAccountId(int accountId) throws SQLException {
         List<Book> books = new ArrayList<>();
         String sql = """
-    SELECT b.buku_id, b.nama_buku, b.tipe_buku, b.jenis_buku, b.tgl_terbit, b.author,
-           b.rakbuku_id_fk, b.status_booking, b.jumlah,
-           (
-               SELECT COUNT(*) FROM bukudetails bd2
-               WHERE bd2.buku_id_fk = b.buku_id AND bd2.status = 1
-           ) AS jml_tersedia
-    FROM booking bk
-    JOIN bukudetails bd ON bk.buku_detail_id_fk = bd.id
-    JOIN buku b ON bd.buku_id_fk = b.buku_id
-    JOIN member m ON bk.member_id_fk = m.member_id
-    WHERE m.account_id_fk = ? AND bd.status = 0
-    """;
+        SELECT b.buku_id, b.nama_buku, b.tipe_buku, b.jenis_buku, b.tgl_terbit, b.author,
+               b.rakbuku_id_fk, b.status_booking, b.jumlah,
+               r.jenis_rak,  -- Added this column
+               (
+                   SELECT COUNT(*) FROM bukudetails bd2
+                   WHERE bd2.buku_id_fk = b.buku_id AND bd2.status = 1
+               ) AS jml_tersedia,
+               bk.booking_date,  -- Added these columns explicitly
+               bk.expired_date
+        FROM booking bk
+        JOIN bukudetails bd ON bk.bukuDetails_id_fk = bd.id
+        JOIN buku b ON bd.buku_id_fk = b.buku_id
+        JOIN rakbuku r ON b.rakbuku_id_fk = r.rakbuku_id  -- Added this join
+        JOIN member m ON bk.member_id_fk = m.member_id
+        WHERE m.account_id_fk = ? AND bd.status = 0
+        """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, accountId);  // Set accountId yang diterima
+            stmt.setInt(1, accountId);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 Book book = new Book(
@@ -114,10 +118,11 @@ public class BookingRepo {
                         rs.getString("tgl_terbit"),
                         rs.getString("author"),
                         rs.getInt("rakbuku_id_fk"),
+                        rs.getString("jenis_rak"),  // Now this will work
                         rs.getBoolean("status_booking"),
                         rs.getInt("jumlah"),
                         rs.getInt("jml_tersedia"),
-                        rs.getDate("booking_date"),  // Menambahkan booking_date
+                        rs.getDate("booking_date"),
                         rs.getDate("expired_date")
                 );
                 books.add(book);

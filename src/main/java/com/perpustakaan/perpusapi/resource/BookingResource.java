@@ -41,29 +41,29 @@ public class BookingResource {
     public Response getBookingsByAccountId(@PathParam("accountId") int accountId) {
         List<Book> books = new ArrayList<>();
 
-        // Perubahan pada query untuk mengambil booking_date dan expired_date dari tabel booking
         String sql = """
-    SELECT b.buku_id, b.nama_buku, b.tipe_buku, b.jenis_buku, b.tgl_terbit, b.author,
-           b.rakbuku_id_fk, b.status_booking, b.jumlah,
-           bk.booking_date, bk.expired_date, 
-           (
-               SELECT COUNT(*) FROM bukudetails bd2
-               WHERE bd2.buku_id_fk = b.buku_id AND bd2.status = 1
-           ) AS jml_tersedia
-    FROM booking bk
-    JOIN bukudetails bd ON bk.bukuDetails_id_fk = bd.id
-    JOIN buku b ON bd.buku_id_fk = b.buku_id
-    JOIN member m ON bk.member_id_fk = m.member_id
-    WHERE m.account_id_fk = ? AND bd.status = 0
-    """;
+        SELECT b.buku_id, b.nama_buku, b.tipe_buku, b.jenis_buku, b.tgl_terbit, b.author,
+               b.rakbuku_id_fk, b.status_booking, b.jumlah,
+               r.jenis_rak,  -- Added jenis_rak from rakbuku table
+               bk.booking_date, bk.expired_date, 
+               (
+                   SELECT COUNT(*) FROM bukudetails bd2
+                   WHERE bd2.buku_id_fk = b.buku_id AND bd2.status = 1
+               ) AS jml_tersedia
+        FROM booking bk
+        JOIN bukudetails bd ON bk.bukuDetails_id_fk = bd.id
+        JOIN buku b ON bd.buku_id_fk = b.buku_id
+        JOIN rakbuku r ON b.rakbuku_id_fk = r.rakbuku_id  -- Added join to rakbuku
+        JOIN member m ON bk.member_id_fk = m.member_id
+        WHERE m.account_id_fk = ? AND bd.status = 0
+        """;
 
         try (Connection conn = DatabaseConfig.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, accountId); // Set accountId
+            stmt.setInt(1, accountId);
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {
-                // Menambahkan booking_date dan expired_date dari hasil query ke objek Book
                 Book book = new Book(
                         rs.getInt("buku_id"),
                         rs.getString("nama_buku"),
@@ -72,11 +72,12 @@ public class BookingResource {
                         rs.getString("tgl_terbit"),
                         rs.getString("author"),
                         rs.getInt("rakbuku_id_fk"),
+                        rs.getString("jenis_rak"),  // Added this field
                         rs.getBoolean("status_booking"),
                         rs.getInt("jumlah"),
                         rs.getInt("jml_tersedia"),
-                        rs.getDate("booking_date"),  // Menambahkan booking_date
-                        rs.getDate("expired_date")   // Menambahkan expired_date
+                        rs.getDate("booking_date"),
+                        rs.getDate("expired_date")
                 );
                 books.add(book);
             }
