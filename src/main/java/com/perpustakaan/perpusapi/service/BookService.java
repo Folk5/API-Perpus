@@ -21,12 +21,11 @@ public class BookService {
     }
 
     public Book getBookById(int id) {
-        // Metode ini mungkin tidak perlu Connection jika hanya untuk validasi singkat
-        // sebelum operasi utama. Namun, jika selalu dalam konteks transaksi, bisa dimodifikasi.
         return bookRepository.findById(id);
     }
 
     public boolean addBook(Book book) {
+        // ... (kode addBook tetap sama seperti sebelumnya) ...
         book.setJmlTersedia(book.getJumlah());
         book.setStatusBooking(false);
 
@@ -39,7 +38,6 @@ public class BookService {
             if (generatedBukuId == -1) {
                 throw new SQLException("Gagal menyimpan buku, tidak mendapatkan ID.");
             }
-            // book.setBukuId(generatedBukuId); // ID sudah di-set di objek jika insert berhasil
 
             if (book.getJumlah() > 0) {
                 bookRepository.insertBukuDetails(generatedBukuId, book.getJumlah(), conn);
@@ -70,55 +68,117 @@ public class BookService {
         }
     }
 
-    public boolean updateBook(Book book) {
+    public boolean updateBook(Book bookDataToUpdate) {
+        Connection conn = null;
         try {
-            Book existingBook = bookRepository.findById(book.getBukuId()); //
-            if (existingBook != null) {
-                bookRepository.update(book); //
-                return true;
-            } else {
-                System.out.println("Book with ID " + book.getBukuId() + " not found for update!");
+            conn = DatabaseConfig.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Dapatkan data buku yang ada saat ini dari database
+            Book existingBook = bookRepository.findById(bookDataToUpdate.getBukuId(), conn);
+            if (existingBook == null) {
+                System.out.println("Book with ID " + bookDataToUpdate.getBukuId() + " not found for update!");
+                conn.rollback(); // Tidak perlu rollback jika belum ada operasi, tapi untuk konsistensi
                 return false;
             }
-        } catch (Exception e) {
+
+            int oldJumlahTotal = existingBook.getJumlah();
+            int newJumlahTotal = bookDataToUpdate.getJumlah();
+
+            // Sinkronisasi jml_tersedia:
+            // Jika jumlah total buku diubah, jml_tersedia perlu disesuaikan.
+            // Asumsi: Jika jumlah total berkurang, pengurangan diprioritaskan dari yang tersedia.
+            // Jika jumlah total bertambah, penambahan masuk ke yang tersedia.
+            int oldJmlTersedia = existingBook.getJmlTersedia();
+            int selisihJumlahTotal = newJumlahTotal - oldJumlahTotal;
+            int newJmlTersedia = oldJmlTersedia + selisihJumlahTotal;
+
+            // Pastikan jml_tersedia tidak negatif dan tidak melebihi jumlah total baru
+            if (newJmlTersedia < 0) newJmlTersedia = 0;
+            if (newJmlTersedia > newJumlahTotal) newJmlTersedia = newJumlahTotal;
+
+            bookDataToUpdate.setJmlTersedia(newJmlTersedia);
+
+            // Update status_booking berdasarkan jml_tersedia baru
+            if (newJmlTersedia == 0 && newJumlahTotal > 0) {
+                bookDataToUpdate.setStatusBooking(true);
+            } else if (newJmlTersedia > 0) {
+                bookDataToUpdate.setStatusBooking(false);
+            } else { // newJumlahTotal == 0
+                bookDataToUpdate.setStatusBooking(false); // Atau true jika 0 dianggap full booked
+            }
+
+
+            // 2. Update tabel 'buku'
+            boolean updated = bookRepository.update(bookDataToUpdate, conn);
+            if (!updated) {
+                conn.rollback();
+                return false; // Gagal update tabel buku
+            }
+
+            // 3. Sesuaikan entri di 'bukudetails'
+            if (newJumlahTotal < oldJumlahTotal) {
+                // Kurangi entri di bukudetails
+                int jumlahDihapus = oldJumlahTotal - newJumlahTotal;
+                // Hapus dari yang tersedia (status=1) terlebih dahulu
+                bookRepository.deleteAvailableBukuDetails(bookDataToUpdate.getBukuId(), jumlahDihapus, conn);
+                // Catatan: Jika jumlahDihapus > jumlah yang tersedia, metode deleteAvailableBukuDetails
+                // hanya akan menghapus yang tersedia. Ini mungkin memerlukan logika tambahan
+                // jika Anda ingin paksa hapus atau berikan error jika item yang dipinjam harus dihapus.
+                // Untuk saat ini, kita prioritaskan menghapus yang tersedia.
+            } else if (newJumlahTotal > oldJumlahTotal) {
+                // Tambah entri di bukudetails
+                int jumlahDitambah = newJumlahTotal - oldJumlahTotal;
+                bookRepository.insertBukuDetails(bookDataToUpdate.getBukuId(), jumlahDitambah, conn);
+            }
+
+            conn.commit();
+            return true;
+
+        } catch (SQLException e) {
             e.printStackTrace();
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
             return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
     public boolean deleteBook(int id) {
+        // ... (kode deleteBook tetap sama seperti sebelumnya) ...
         Connection conn = null;
         try {
-            conn = DatabaseConfig.getConnection(); // Dapatkan koneksi
-
-            // Opsional: Cek apakah buku ada menggunakan koneksi yang sama.
-            // Book existingBook = bookRepository.findById(id, conn);
-            // Jika menggunakan findById yang tidak meminta conn, itu akan membuka koneksi baru.
-            // Untuk delete, lebih baik cek dulu dengan koneksi terpisah atau pastikan findById bisa pakai conn.
-            Book existingBook = bookRepository.findById(id); // Menggunakan findById() yang ada
+            conn = DatabaseConfig.getConnection();
+            Book existingBook = bookRepository.findById(id);
             if (existingBook == null) {
                 System.out.println("Book with ID " + id + " not found for deletion!");
-                return false; // Buku tidak ditemukan
+                return false;
             }
 
-            conn.setAutoCommit(false); // Mulai transaksi
+            conn.setAutoCommit(false);
 
-            // 1. Hapus dari bukudetails terlebih dahulu
-            // (Jika ada foreign key dari booking ke bukudetails tanpa ON DELETE CASCADE,
-            // dan ada booking aktif, penghapusan bukudetails akan gagal.
-            // Ini adalah perilaku yang aman untuk mencegah penghapusan buku yang sedang dipinjam).
             bookRepository.deleteBukuDetailsByBukuId(id, conn);
-
-            // 2. Hapus dari buku
             boolean deletedFromBuku = bookRepository.delete(id, conn);
 
             if (!deletedFromBuku) {
-                // Seharusnya tidak terjadi jika existingBook ditemukan, tapi sebagai jaga-jaga
                 conn.rollback();
                 return false;
             }
 
-            conn.commit(); // Commit transaksi jika semua berhasil
+            conn.commit();
             return true;
 
         } catch (SQLException e) {
@@ -126,7 +186,7 @@ public class BookService {
             System.err.println("SQL Error during deleteBook: " + e.getMessage());
             if (conn != null) {
                 try {
-                    conn.rollback(); // Rollback jika ada kesalahan
+                    conn.rollback();
                 } catch (SQLException ex) {
                     ex.printStackTrace();
                     System.err.println("SQL Error during rollback: " + ex.getMessage());
@@ -136,8 +196,8 @@ public class BookService {
         } finally {
             if (conn != null) {
                 try {
-                    conn.setAutoCommit(true); // Kembalikan ke mode auto-commit default
-                    conn.close(); // Tutup koneksi
+                    conn.setAutoCommit(true);
+                    conn.close();
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
