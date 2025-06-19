@@ -31,6 +31,25 @@ public class BookRepo {
         return books;
     }
 
+    public List<Book> findAvailableBooksLimit5() {
+        List<Book> books = new ArrayList<>();
+        // Query ini mengambil 5 buku yang status_booking = 0 (false) dan jumlahnya lebih dari 0
+        String sql = "SELECT * FROM buku WHERE status_booking = 0 AND jml_tersedia > 0 LIMIT 5";
+
+        try (Connection conn = connect();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                books.add(mapResultSetToBook(rs));
+            }
+        } catch (SQLException e) {
+            // Sebaiknya log error di sini atau lempar custom exception
+            e.printStackTrace();
+        }
+        return books;
+    }
+
     public Book findById(int id, Connection conn) throws SQLException {
         String sql = "SELECT * FROM buku WHERE buku_id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
